@@ -1,13 +1,27 @@
 package app;
 
 import model.User;
+import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
+import service.CryptographyService;
+
+import javax.crypto.NoSuchPaddingException;
+import java.security.NoSuchAlgorithmException;
+import java.security.NoSuchProviderException;
+import java.security.Security;
 
 public class Crypto {
-    public static void main(String[] args) {
+    public static void main(String[] args) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
 
-        User user = new User("User");
-        System.out.println(user.toString());
+        int addProvider = Security.addProvider(new BouncyCastleFipsProvider());
 
+        if (Security.getProvider("BCFIPS") == null) {
+            System.out.println("Bouncy Castle provider NAO disponivel");
+        } else {
+            System.out.println("Bouncy Castle provider esta disponivel");
+        }
 
+        CryptographyService cryptographyService = new CryptographyService();
+        String encrypted = cryptographyService.sendMessage("jesus", "save me jesus");
+        cryptographyService.readMessage(encrypted);
     }
 }
