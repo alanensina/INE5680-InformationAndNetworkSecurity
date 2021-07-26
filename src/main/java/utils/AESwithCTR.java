@@ -11,9 +11,6 @@ import java.util.logging.Logger;
 
 public class AESwithCTR {
     private static AESwithCTR instance;
-    private Key aesKey;
-    private byte iv[];
-    private IvParameterSpec ivSpec;
     private Cipher cipher;
 
     public static AESwithCTR getInstance() {
@@ -23,41 +20,23 @@ public class AESwithCTR {
         return instance;
     }
 
-    public String encrypt(String strToEncrypt) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
-        // TODO - Externalizar trecho de código - INICIO
-        // Instancia o cipher
+    public String encrypt(String strToEncrypt, Key aesKey, IvParameterSpec ivSpec) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
         cipher = Cipher.getInstance("AES/CTR/NoPadding", "BCFIPS");
-
-        // Gera uma chave AES
-        System.out.print("Gerando chave \t-> ");
-        KeyGenerator sKenGen;
-        sKenGen = KeyGenerator.getInstance("AES", "BCFIPS");
-        aesKey = sKenGen.generateKey();
-        System.out.println("Chave AES \t= " + Hex.encodeHexString(aesKey.getEncoded()));
-
-        // Gerando o iv com SecureRandom
-        System.out.print("Gerando IV \t-> ");
-        SecureRandom random = SecureRandom.getInstance("DEFAULT", "BCFIPS");
-        iv = new byte[16];
-        random.nextBytes(iv);
-        ivSpec = new IvParameterSpec(iv);
-        System.out.println("IV \t= " + Hex.encodeHexString(iv));
-        // TODO - Externalizar trecho de código - FIM
-
         try {
             cipher.init(Cipher.ENCRYPT_MODE, aesKey, ivSpec);
 
             final String encryptedString = Hex.encodeHexString(cipher.doFinal(strToEncrypt.getBytes()));
             return encryptedString;
+
         } catch (InvalidKeyException | InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException e) {
+            System.out.println(e);
         }
         return null;
 
     }
 
-    public String decrypt(String strEncrypted) throws InvalidAlgorithmParameterException, InvalidKeyException {
+    public String decrypt(String strEncrypted, Key aesKey, IvParameterSpec ivSpec) {
         try {
-
             cipher.init(Cipher.DECRYPT_MODE, aesKey, ivSpec);
 
             byte[] embytes = {};
@@ -68,10 +47,9 @@ public class AESwithCTR {
             }
 
             String decryptedString = new String(cipher.doFinal(embytes));
-
             return decryptedString;
 
-        } catch (IllegalBlockSizeException | BadPaddingException e) {
+        } catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException | InvalidAlgorithmParameterException e) {
             System.out.println(e);
         }
         return null;
