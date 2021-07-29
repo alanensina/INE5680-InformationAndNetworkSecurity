@@ -1,6 +1,5 @@
 package app;
 
-import model.User;
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
 import service.CryptographyService;
 
@@ -21,7 +20,7 @@ public class Crypto {
         }
 
         CryptographyService cryptographyService = new CryptographyService();
-        String encrypted = cryptographyService.sendMessage("jesus", "save me jesus");
-        cryptographyService.readMessage(encrypted);
+        String encryptedMessage = cryptographyService.sendMessage("jesus", "send me from hell");
+        cryptographyService.readMessage(encryptedMessage);
     }
 }
