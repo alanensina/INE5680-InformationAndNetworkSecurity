@@ -39,14 +39,14 @@ public class AESwithCTR {
         try {
             cipher.init(Cipher.DECRYPT_MODE, aesKey, ivSpec);
 
-            byte[] embytes = {};
+            byte[] inBytes = {};
             try {
-                embytes = Hex.decodeHex(strEncrypted.toCharArray());
+                inBytes = Hex.decodeHex(strEncrypted.toCharArray());
             } catch (DecoderException ex) {
                 Logger.getLogger(AESwithCTR.class.getName()).log(Level.SEVERE, null, ex);
             }
 
-            String decryptedString = new String(cipher.doFinal(embytes));
+            String decryptedString = new String(cipher.doFinal(inBytes));
             return decryptedString;
 
         } catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException | InvalidAlgorithmParameterException e) {
