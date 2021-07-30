@@ -21,7 +21,7 @@ public class Crypto {
     private String masterKey;
     private Scanner scanner;
 
-    public Crypto(){
+    public Crypto() {
         this.scanner = new Scanner(System.in);
         System.out.println("Insira a senha mestra: ");
         this.masterKey = scanner.nextLine();
@@ -34,13 +34,13 @@ public class Crypto {
         crypto.start();
     }
 
-    private void initBCFIPS(){
+    private void initBCFIPS() {
         Security.addProvider(new BouncyCastleFipsProvider());
 
         if (Security.getProvider("BCFIPS") == null) {
-            throw new RuntimeException("Bouncy Castle provider NAO disponivel");
+            throw new RuntimeException("Bouncy Castle Provider indisponível.");
         } else {
-            System.out.println("Bouncy Castle provider esta disponivel");
+            System.out.println("Bouncy Castle Provider inicializado!");
         }
     }
 
@@ -60,25 +60,25 @@ public class Crypto {
         startChat(user1, user2, masterKey);
     }
 
-    private void startChat(User user1, User user2, String masterKey){
+    private void startChat(User user1, User user2, String masterKey) {
         service.createMasterPassword(masterKey);
         String msg;
 
-        while(true){
+        while (true) {
             System.out.println("Aguardando " + user1.getName() + " digitar a mensagem...");
             msg = scanner.nextLine();
-            isExitMessage(msg);
-            service.readMessage(service.sendMessage(user1, user2, msg));
+            checkExitMessage(msg);
+            service.sendMessageToEncryptor(user1, user2, msg);
 
             System.out.println("Aguardando " + user2.getName() + " digitar a mensagem...");
             msg = scanner.nextLine();
-            isExitMessage(msg);
-            service.readMessage(service.sendMessage(user2, user1, msg));
+            checkExitMessage(msg);
+            service.sendMessageToEncryptor(user2, user1, msg);
         }
     }
 
-    private void isExitMessage(String message){
-        if(EXIT.equalsIgnoreCase(message)){
+    private void checkExitMessage(String message) {
+        if (EXIT.equalsIgnoreCase(message)) {
             System.out.println("Chat finalizado!");
             this.scanner.close();
             System.exit(0);

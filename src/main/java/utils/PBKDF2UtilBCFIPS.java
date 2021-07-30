@@ -21,6 +21,7 @@ public class PBKDF2UtilBCFIPS {
 
     /**
      * Gerar chave derivada da senha
+     *
      * @param salt
      * @return
      */
@@ -38,7 +39,7 @@ public class PBKDF2UtilBCFIPS {
         return derivedPass;
     }
 
-    /*Usado para gerar o salt  */
+    /* Usado para gerar o salt  */
     public String getSalt() throws NoSuchAlgorithmException {
         SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
         //SecureRandom sr = new SecureRandom();

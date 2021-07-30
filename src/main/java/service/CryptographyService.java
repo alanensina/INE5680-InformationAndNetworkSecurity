@@ -43,34 +43,43 @@ public class CryptographyService {
         try {
             salt = pbkbf2.getSalt();
             System.out.println("Salt gerado para senha mestre: " + salt);
-            String encryptedMasterKey =  pbkbf2.generateDerivedKey(masterKey, salt);
+            String encryptedMasterKey = pbkbf2.generateDerivedKey(masterKey, salt);
             System.out.println("Senha mestre cifrada: " + encryptedMasterKey); // TODO: verificar se há necessidade de exibir a senha cifrada.
             saveEncryptedMasterKey(encryptedMasterKey);
         } catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(CryptographyService.class.getName()).log(Level.SEVERE, null, ex);
-            throw new RuntimeException("Erro ao encriptar a senha mestre.");
+            throw new RuntimeException("Erro ao encriptar a senha mestre: " + ex.getMessage());
         }
     }
 
     // TODO: Persistir a senha mestre encriptada em um arquivo encriptado.
-    private void saveEncryptedMasterKey(String encryptedMasterKey){
+    private void saveEncryptedMasterKey(String encryptedMasterKey) {
         System.out.println("Salvando senha mestra em arquivo encriptado...");
 
         System.out.println("Senha mestra salva com sucesso!");
     }
 
     // TODO: Buscar senha mestre encriptada no arquivo encriptado
-    private String getEncryptedMasterKey(){
+    private String getEncryptedMasterKey() {
         System.out.println("Buscando senha mestre em arquivo encriptado...");
 
         System.out.println("Senha encontrada com sucesso!");
         return "";
     }
 
-    public String sendMessage(User sender, User receiver, String message) {
-        String encryptedMessage = "";
+    public void sendMessageToEncryptor(User sender, User receiver, String message) {
         System.out.println(sender.getName() + " fala para " + receiver.getName() + ": " + message);
 
+        String encryptedMessage = encryptMessage(message);
+
+        //TODO: Fazer o encrypt-then-Mac antes e enviar ao para decrypt
+
+
+        sendMessageToDecryptor(encryptedMessage);
+    }
+
+    private String encryptMessage(String message) {
+        String encryptedMessage;
         try {
             try {
                 initCrypto();
@@ -80,25 +89,31 @@ public class CryptographyService {
 
             encryptedMessage = AESwithCTR.getInstance().encrypt(message, aesKey, ivSpec);
             System.out.println("Mensagem cifrada enviada = " + encryptedMessage);
-           // System.out.println("Mensagem original = " + message);
+            return encryptedMessage;
         } catch (Exception ex) {
             Logger.getLogger(CryptographyService.class.getName()).log(Level.SEVERE, null, ex);
+            throw new RuntimeException("Erro ao encriptar a mensagem: " + ex.getMessage());
         }
-
-        return encryptedMessage;
     }
 
-    public String readMessage(String message) {
-        String decodeMessage = "";
+    public void sendMessageToDecryptor(String message) {
+        calculateMac(message);
+        decryptMessagem(message);
+    }
 
+    // TODO: calcular o MAC e verificar se está correto
+    private void calculateMac(String message) {
+
+    }
+
+    private void decryptMessagem(String message) {
         try {
-            decodeMessage = AESwithCTR.getInstance().decrypt(message, aesKey, ivSpec);
+            String decodeMessage = AESwithCTR.getInstance().decrypt(message, aesKey, ivSpec);
             System.out.println("Mensagem original cifrada recebida = " + message);
             System.out.println("Mensagem decifrada = " + decodeMessage);
         } catch (Exception ex) {
             Logger.getLogger(CryptographyService.class.getName()).log(Level.SEVERE, null, ex);
+            throw new RuntimeException("Erro ao descriptografar a mensagem: " + ex.getMessage());
         }
-
-        return decodeMessage;
     }
 }
