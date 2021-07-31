@@ -1,5 +1,7 @@
 package model;
 
+import java.util.ArrayList;
+
 public class User {
 
     private String name;
@@ -10,10 +12,6 @@ public class User {
 
     public String getName() {
         return name;
-    }
-
-    public void setName(String name) {
-        this.name = name;
     }
 
     @Override
