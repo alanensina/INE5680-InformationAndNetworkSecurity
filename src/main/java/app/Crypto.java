@@ -18,23 +18,22 @@ public class Crypto {
     private User user1;
     private User user2;
     private CryptographyService service;
-    private String masterKey;
     private Scanner scanner;
 
     public Crypto() {
         this.scanner = new Scanner(System.in);
         System.out.println("Insira a senha mestra: ");
-        this.masterKey = scanner.nextLine();
         this.service = new CryptographyService();
+        service.createMasterPassword(scanner.nextLine());
     }
 
-    public static void main(String[] args) throws NoSuchPaddingException, NoSuchAlgorithmException, NoSuchProviderException {
+    public static void main(String[] args)  {
+        initBCFIPS();
         Crypto crypto = new Crypto();
-        crypto.initBCFIPS();
         crypto.start();
     }
 
-    private void initBCFIPS() {
+    private static void initBCFIPS() {
         Security.addProvider(new BouncyCastleFipsProvider());
 
         if (Security.getProvider("BCFIPS") == null) {
@@ -53,15 +52,12 @@ public class Crypto {
 
         if (Objects.isNull(user1) || Objects.isNull(user2)) {
             throw new RuntimeException("Nomes de usuários não informados.");
-        } else if (Objects.isNull(masterKey)) {
-            throw new RuntimeException("Senha mestre não informada.");
         }
 
-        startChat(user1, user2, masterKey);
+        startChat(user1, user2);
     }
 
-    private void startChat(User user1, User user2, String masterKey) {
-        service.createMasterPassword(masterKey);
+    private void startChat(User user1, User user2) {
         String msg;
 
         while (true) {
