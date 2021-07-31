@@ -11,51 +11,70 @@ import utils.Utils;
 
 import javax.crypto.KeyGenerator;
 import javax.crypto.NoSuchPaddingException;
+import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
-import java.security.Key;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
-import java.security.SecureRandom;
+import java.io.FileOutputStream;
+import java.io.IOException;
+import java.security.*;
+import java.security.cert.CertificateException;
+import java.util.Objects;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 
 public class CryptographyService {
-    private Key aesKey;
-    private IvParameterSpec ivSpec;
+
+    private final String MASTERKEY = "MasterKey";
+    private final String IV = "IV";
+    private final String KEY = "Key";
+
+    private String keystoreFile = "keystore.bcfks";
     private SecureRandom random;
     private int ivCounter = 0;
     private PBKDF2UtilBCFIPS pbkbf2;
+    private KeyStore ks;
 
-    public CryptographyService(){
+    public CryptographyService() {
         this.random = new SecureRandom();
         this.pbkbf2 = new PBKDF2UtilBCFIPS();
+        try {
+            this.ks = KeyStore.getInstance("BCFKS", "BCFIPS");
+        } catch (KeyStoreException | NoSuchProviderException e) {
+            throw new RuntimeException("Erro ao inicializar o KeyStore: " + e.getMessage());
+        }
     }
 
-    private IvParameterSpec generateIv(){
-        this.ivSpec = Utils.createCtrIvForAES(getIvCounter()+1, random);
-        System.out.println("IV da mensagem: \t= " + Hex.encodeHexString(ivSpec.getIV()));
+    private IvParameterSpec generateIv() {
+        IvParameterSpec iv = Utils.createCtrIvForAES(getIvCounter() + 1, random);
+        System.out.println("IV da mensagem: \t= " + Hex.encodeHexString(iv.getIV()));
 
-        //TODO: salvar iv no arquivo cifrado
+        saveNewEntryToEncryptedFile(IV, Hex.encodeHexString(iv.getIV()));
 
-        return ivSpec;
+        return iv;
     }
 
-    private void generateAESKey(){
+    private Key generateAESKey() {
+        String masterKey = getEncryptedMasterKey();
 
-        //TODO: buscar senha mestra no arquivo
-        String masterKey = "teste";
+        if (Objects.isNull(masterKey)) {
+            throw new RuntimeException("MasterKey não encontrada.");
+        }
+
+        //TODO: retirar esse sout quando finalizar o projeto, usado apenas para testes
+        System.out.println("MasterKey retornada do arquivo encriptado: " + masterKey);
 
         try {
             try {
-                aesKey = new SecretKeySpec(Hex.decodeHex(PBKDF2UtilBCFIPS.generateDerivedKey(masterKey, pbkbf2.getSalt()).toCharArray()), "AES");
-                System.out.println("Chave da mensagem: " + Hex.encodeHexString(aesKey.getEncoded()));
+                Key key = new SecretKeySpec(Hex.decodeHex(PBKDF2UtilBCFIPS.generateDerivedKey(masterKey, pbkbf2.getSalt()).toCharArray()), "AES");
+                System.out.println("Chave da mensagem: " + Hex.encodeHexString(key.getEncoded()));
+                saveNewEntryToEncryptedFile(KEY, Hex.encodeHexString(key.getEncoded()));
+                return key;
             } catch (DecoderException e) {
                 throw new RuntimeException("Erro ao gerar chave AES: " + e.getMessage());
             }
 
         } catch (NoSuchAlgorithmException e) {
-           throw new RuntimeException("Erro ao gerar salt: " + e.getMessage());
+            throw new RuntimeException("Erro ao gerar salt: " + e.getMessage());
         }
     }
 
@@ -74,19 +93,42 @@ public class CryptographyService {
         }
     }
 
-    // TODO: Persistir a senha mestre encriptada em um arquivo encriptado.
     private void saveEncryptedMasterKey(String encryptedMasterKey) {
         System.out.println("Salvando senha mestra em arquivo encriptado...");
 
-        System.out.println("Senha mestra salva com sucesso!");
+        try {
+            ks.load(null, null); // Cria arquivo vazio encriptado
+            ks.store(new FileOutputStream(keystoreFile), null); // Salva o arquivo encriptado na raiz do sistema
+            saveNewEntryToEncryptedFile(MASTERKEY, encryptedMasterKey); // Adiciona a masterkey como entrada no arquivo.
+            ks.store(new FileOutputStream(keystoreFile), null);
+            System.out.println("Senha mestra salva com sucesso!");
+        } catch (IOException | NoSuchAlgorithmException | CertificateException | KeyStoreException e) {
+            throw new RuntimeException("Erro ao salvar senha mestra em arquivo encriptado: " + e.getMessage());
+        }
     }
 
-    // TODO: Buscar senha mestre encriptada no arquivo encriptado
-    private String getEncryptedMasterKey() {
-        System.out.println("Buscando senha mestre em arquivo encriptado...");
+    private void saveNewEntryToEncryptedFile(String entryName, String encriptedKey) {
+        try {
+            Key key = new SecretKeySpec(Hex.decodeHex(encriptedKey.toCharArray()), "AES");
+            ks.setKeyEntry(entryName, key, null, null);
+            System.out.println(entryName + " salva no arquivo encriptado.");
+        } catch (KeyStoreException | DecoderException e) {
+            throw new RuntimeException("Erro ao salvar uma nova entrada no arquivo encriptado: " + e.getMessage());
+        }
+    }
 
-        System.out.println("Senha encontrada com sucesso!");
-        return "";
+    private String getEncryptedMasterKey() {
+        String masterKey;
+        System.out.println("Buscando senha mestre em arquivo encriptado...");
+        try {
+            Key key = ks.getKey(MASTERKEY, null);
+            masterKey = Hex.encodeHexString(key.getEncoded());
+            System.out.println("Senha encontrada com sucesso!");
+
+            return masterKey;
+        } catch (KeyStoreException | UnrecoverableKeyException | NoSuchAlgorithmException e) {
+            throw new RuntimeException("Erro ao buscar senha mestra no arquivo encriptado: " + e.getMessage());
+        }
     }
 
     public void sendMessageToEncryptor(User sender, User receiver, String message) {
@@ -103,14 +145,14 @@ public class CryptographyService {
     private String encryptMessage(String message) {
         String encryptedMessage;
 
-        generateAESKey();
-        generateIv();
+        Key key = generateAESKey();
+        IvParameterSpec IV = generateIv();
 
         try {
-            encryptedMessage = AESwithCTR.getInstance().encrypt(message, aesKey, ivSpec);
+            encryptedMessage = AESwithCTR.getInstance().encrypt(message, key, IV);
             System.out.println("Mensagem cifrada enviada = " + encryptedMessage);
             return encryptedMessage;
-        } catch (NoSuchPaddingException|NoSuchAlgorithmException|NoSuchProviderException e) {
+        } catch (NoSuchPaddingException | NoSuchAlgorithmException | NoSuchProviderException e) {
             throw new RuntimeException("Erro ao encriptar a mensagem: " + e.getMessage());
         }
     }
@@ -126,14 +168,22 @@ public class CryptographyService {
     }
 
     //TODO: recalcular Mac para verificar autenticidade
-    private void recalculateMac(){
+    private void recalculateMac() {
 
     }
 
     private void decryptMessage(String message) {
         try {
-            //TODO: aesKey e ivSpec devem vir do arquivo cifrado
-            String decodeMessage = AESwithCTR.getInstance().decrypt(message, aesKey, ivSpec);
+            // Busca IV e key do arquivo cifrado
+            Key ivKey = ks.getKey(IV, null);
+            Key key = ks.getKey(KEY, null);
+            IvParameterSpec iv = new IvParameterSpec(ivKey.getEncoded());
+
+            //TODO: retirar esse sout quando finalizar o projeto, usado apenas para testes
+            System.out.println("IV retornada do arquivo: " + Hex.encodeHexString(iv.getIV()));
+            System.out.println("Key retornada do arquivo: " + Hex.encodeHexString(key.getEncoded()));
+
+            String decodeMessage = AESwithCTR.getInstance().decrypt(message, key, iv);
             System.out.println("Mensagem original cifrada recebida = " + message);
             System.out.println("Mensagem decifrada = " + decodeMessage);
         } catch (Exception ex) {
