@@ -29,10 +29,8 @@ public class AESwithCTR {
             return encryptedString;
 
         } catch (InvalidKeyException | InvalidAlgorithmParameterException | IllegalBlockSizeException | BadPaddingException e) {
-            System.out.println(e);
+           throw new RuntimeException("Erro ao encriptar -> " + e.getMessage());
         }
-        return null;
-
     }
 
     public String decrypt(String strEncrypted, Key aesKey, IvParameterSpec ivSpec) {
@@ -50,8 +48,8 @@ public class AESwithCTR {
             return decryptedString;
 
         } catch (IllegalBlockSizeException | BadPaddingException | InvalidKeyException | InvalidAlgorithmParameterException e) {
-            System.out.println(e);
+            throw new RuntimeException("Erro ao desencriptar -> " + e.getMessage());
         }
-        return null;
+
     }
 }

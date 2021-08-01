@@ -4,9 +4,6 @@ import model.User;
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
 import service.CryptographyService;
 
-import javax.crypto.NoSuchPaddingException;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.Security;
 import java.util.Objects;
 import java.util.Scanner;
@@ -27,12 +24,13 @@ public class Crypto {
         service.createMasterPassword(scanner.nextLine());
     }
 
-    public static void main(String[] args)  {
+    public static void main(String[] args) {
         initBCFIPS();
         Crypto crypto = new Crypto();
         crypto.start();
     }
 
+    // Método responsável em iniciar o BCFIPS
     private static void initBCFIPS() {
         Security.addProvider(new BouncyCastleFipsProvider());
 
@@ -43,6 +41,7 @@ public class Crypto {
         }
     }
 
+    // Método responsável em iniciar a aplicação
     private void start() {
         System.out.println("Insira o nome do primeiro usuário: ");
         this.user1 = new User(scanner.nextLine());
@@ -57,6 +56,7 @@ public class Crypto {
         startChat(user1, user2);
     }
 
+    // Método responsável em iniciar o chat
     private void startChat(User user1, User user2) {
         String msg;
 
@@ -64,15 +64,16 @@ public class Crypto {
             System.out.println("Aguardando " + user1.getName() + " digitar a mensagem...");
             msg = scanner.nextLine();
             checkExitMessage(msg);
-            service.sendMessageToEncryptor(user1, user2, msg);
+            service.encryptMessageAndSendToDecryptor(user1, user2, msg);
 
             System.out.println("Aguardando " + user2.getName() + " digitar a mensagem...");
             msg = scanner.nextLine();
             checkExitMessage(msg);
-            service.sendMessageToEncryptor(user2, user1, msg);
+            service.encryptMessageAndSendToDecryptor(user2, user1, msg);
         }
     }
 
+    // Método responsável em verificar
     private void checkExitMessage(String message) {
         if (EXIT.equalsIgnoreCase(message)) {
             System.out.println("Chat finalizado!");

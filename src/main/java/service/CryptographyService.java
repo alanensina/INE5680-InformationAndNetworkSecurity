@@ -1,7 +1,6 @@
 package service;
 
-
-import de.rtner.security.auth.spi.PBKDF2;
+import model.LittlePackage;
 import model.User;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
@@ -9,9 +8,7 @@ import utils.AESwithCTR;
 import utils.PBKDF2UtilBCFIPS;
 import utils.Utils;
 
-import javax.crypto.KeyGenerator;
-import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
+import javax.crypto.*;
 import javax.crypto.spec.IvParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import java.io.FileOutputStream;
@@ -27,23 +24,29 @@ public class CryptographyService {
     private final String MASTERKEY = "MasterKey";
     private final String IV = "IV";
     private final String KEY = "Key";
+    private final String MAC_KEY = "mac-key";
 
     private String keystoreFile = "keystore.bcfks";
     private SecureRandom random;
     private int ivCounter = 0;
     private PBKDF2UtilBCFIPS pbkbf2;
     private KeyStore ks;
+    private Mac mac;
+    private Cipher cipher;
 
     public CryptographyService() {
         this.random = new SecureRandom();
         this.pbkbf2 = new PBKDF2UtilBCFIPS();
         try {
             this.ks = KeyStore.getInstance("BCFKS", "BCFIPS");
-        } catch (KeyStoreException | NoSuchProviderException e) {
-            throw new RuntimeException("Erro ao inicializar o KeyStore: " + e.getMessage());
+            this.mac = Mac.getInstance("HMacSHA256", "BCFIPS");
+            this.cipher = Cipher.getInstance("AES/CTR/NoPadding", "BCFIPS");
+        } catch (KeyStoreException | NoSuchProviderException | NoSuchAlgorithmException | NoSuchPaddingException e) {
+            throw new RuntimeException("Erro ao inicializar o CryptographyService: " + e.getMessage());
         }
     }
 
+    // Método responsável por gerar o IV
     private IvParameterSpec generateIv() {
         IvParameterSpec iv = Utils.createCtrIvForAES(getIvCounter() + 1, random);
         System.out.println("IV da mensagem: \t= " + Hex.encodeHexString(iv.getIV()));
@@ -53,6 +56,7 @@ public class CryptographyService {
         return iv;
     }
 
+    // Método responsável por criar uma Key derivando da chave-mestra
     private Key generateAESKey() {
         String masterKey = getEncryptedMasterKey();
 
@@ -60,13 +64,13 @@ public class CryptographyService {
             throw new RuntimeException("MasterKey não encontrada.");
         }
 
-        //TODO: retirar esse sout quando finalizar o projeto, usado apenas para testes
-        System.out.println("MasterKey retornada do arquivo encriptado: " + masterKey);
-
         try {
             try {
+                // Cria uma Key derivando da Senha Mestre
                 Key key = new SecretKeySpec(Hex.decodeHex(PBKDF2UtilBCFIPS.generateDerivedKey(masterKey, pbkbf2.getSalt()).toCharArray()), "AES");
                 System.out.println("Chave da mensagem: " + Hex.encodeHexString(key.getEncoded()));
+
+                // Salva a key no arquivo encriptado
                 saveNewEntryToEncryptedFile(KEY, Hex.encodeHexString(key.getEncoded()));
                 return key;
             } catch (DecoderException e) {
@@ -78,14 +82,15 @@ public class CryptographyService {
         }
     }
 
+    // Método responsável por criar a chave-mestra
     public void createMasterPassword(String masterKey) {
         String salt = "";
 
         try {
             salt = pbkbf2.getSalt();
             System.out.println("Salt gerado para senha mestre: " + salt);
-            String encryptedMasterKey = pbkbf2.generateDerivedKey(masterKey, salt);
-            System.out.println("Senha mestre cifrada: " + encryptedMasterKey); // TODO: verificar se há necessidade de exibir a senha cifrada.
+            String encryptedMasterKey = pbkbf2.generateDerivedKey(masterKey, salt); // Cria a Chave Derivada (Wrapped Key) da Senha Mestra
+            System.out.println("Senha mestre cifrada: " + encryptedMasterKey);
             saveEncryptedMasterKey(encryptedMasterKey);
         } catch (NoSuchAlgorithmException ex) {
             Logger.getLogger(CryptographyService.class.getName()).log(Level.SEVERE, null, ex);
@@ -93,6 +98,7 @@ public class CryptographyService {
         }
     }
 
+    // Método responsável por salvar no arquivo a chave-mestra
     private void saveEncryptedMasterKey(String encryptedMasterKey) {
         System.out.println("Salvando senha mestra em arquivo encriptado...");
 
@@ -107,6 +113,7 @@ public class CryptographyService {
         }
     }
 
+    // Método responsável para salvar uma key no arquivo encriptado
     private void saveNewEntryToEncryptedFile(String entryName, String encriptedKey) {
         try {
             Key key = new SecretKeySpec(Hex.decodeHex(encriptedKey.toCharArray()), "AES");
@@ -117,6 +124,7 @@ public class CryptographyService {
         }
     }
 
+    // Método responsável para buscar a senha mestra no arquivo encriptado
     private String getEncryptedMasterKey() {
         String masterKey;
         System.out.println("Buscando senha mestre em arquivo encriptado...");
@@ -131,17 +139,17 @@ public class CryptographyService {
         }
     }
 
-    public void sendMessageToEncryptor(User sender, User receiver, String message) {
+    // Método responsável para cifrar a mensagem e enviar ao decifrador
+    public void encryptMessageAndSendToDecryptor(User sender, User receiver, String message) {
         System.out.println(sender.getName() + " fala para " + receiver.getName() + ": " + message);
 
-        String encryptedMessage = encryptMessage(message);
+        // Cifra a mensagem e em seguida aplica o encrypt-then-mac e retorna o pacote que será enviado ao decifrador
+        LittlePackage littlePackage = encryptThenMac(encryptMessage(message));
 
-        //TODO: Fazer o encrypt-then-Mac antes e enviar ao para decrypt
-        calculateMac(message);
-
-        sendMessageToDecryptor(encryptedMessage);
+        sendMessageToDecryptor(littlePackage);
     }
 
+    // Método responsável por cifrar a mensagem
     private String encryptMessage(String message) {
         String encryptedMessage;
 
@@ -157,29 +165,83 @@ public class CryptographyService {
         }
     }
 
-    public void sendMessageToDecryptor(String message) {
-        recalculateMac();
-        decryptMessage(message);
+    // Método do Decifrador, responsável por validar o MAC e decifrar a mensagem
+    public void sendMessageToDecryptor(LittlePackage littlePackage) {
+        recalculateMac(littlePackage);
+        decryptMessage(littlePackage.getEncryptedMessage());
     }
 
-    // TODO: calcular o MAC e verificar se está correto
-    private void calculateMac(String message) {
-
-    }
-
-    //TODO: recalcular Mac para verificar autenticidade
-    private void recalculateMac() {
-
-    }
-
-    private void decryptMessage(String message) {
+    // Método responsável por aplicar o encrypt-Then-Mac
+    private LittlePackage encryptThenMac(String message) {
         try {
-            // Busca IV e key do arquivo cifrado
             Key ivKey = ks.getKey(IV, null);
             Key key = ks.getKey(KEY, null);
             IvParameterSpec iv = new IvParameterSpec(ivKey.getEncoded());
 
-            //TODO: retirar esse sout quando finalizar o projeto, usado apenas para testes
+            Key masterKey = ks.getKey(MASTERKEY, null);
+            Key macKey = new SecretKeySpec(masterKey.getEncoded(), "HMacSHA256");
+
+            saveNewEntryToEncryptedFile(MAC_KEY, Hex.encodeHexString(macKey.getEncoded()));
+
+            cipher.init(Cipher.ENCRYPT_MODE, key, iv);
+
+            byte[] cipherText = new byte[cipher.getOutputSize(message.length() + mac.getMacLength())];
+
+            int ctLength = cipher.update(Utils.toByteArray(message), 0, message.length(), cipherText, 0);
+            mac.init(macKey);
+            mac.update(Utils.toByteArray(message));
+
+            ctLength += cipher.doFinal(mac.doFinal(), 0, mac.getMacLength(), cipherText, ctLength);
+
+            return new LittlePackage(ctLength, cipherText, message);
+
+        } catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException |
+                InvalidKeyException | InvalidAlgorithmParameterException | ShortBufferException |
+                IllegalBlockSizeException | BadPaddingException e) {
+            throw new RuntimeException("Erro ao realizar o encrypt-then-mac: " + e.getMessage());
+        }
+    }
+
+    // Método responsável por recalcular o MAC
+    private void recalculateMac(LittlePackage littlePackage) {
+        try {
+            Key ivKey = ks.getKey(IV, null);
+            Key key = ks.getKey(KEY, null);
+            Key macKey = ks.getKey(MAC_KEY, null);
+            IvParameterSpec iv = new IvParameterSpec(ivKey.getEncoded());
+
+            cipher.init(Cipher.DECRYPT_MODE, key, iv);
+
+            byte[] plainText = cipher.doFinal(littlePackage.getCipherText(), 0, littlePackage.getCtLength());
+            int messageLength = plainText.length - mac.getMacLength();
+
+            mac.init(macKey);
+            mac.update(plainText, 0, messageLength);
+
+            byte[] messageMac = new byte[mac.getMacLength()];
+            System.arraycopy(plainText, messageLength, messageMac, 0, messageMac.length);
+
+            System.out.println("MAC válido? " + (verifyMac(messageMac) ? "Sim" : "Não"));
+        } catch (KeyStoreException | NoSuchAlgorithmException | UnrecoverableKeyException |
+                InvalidKeyException | InvalidAlgorithmParameterException |
+                IllegalBlockSizeException | BadPaddingException e) {
+            e.printStackTrace();
+        }
+    }
+
+    // Método responsável por verificar se o MAC é válido ou não
+    private boolean verifyMac(byte[] messageMac) {
+        return MessageDigest.isEqual(mac.doFinal(), messageMac);
+    }
+
+
+    // Método responsável por decifrar a mensagem cifrada
+    private void decryptMessage(String message) {
+        try {
+            Key ivKey = ks.getKey(IV, null);
+            Key key = ks.getKey(KEY, null);
+            IvParameterSpec iv = new IvParameterSpec(ivKey.getEncoded());
+
             System.out.println("IV retornada do arquivo: " + Hex.encodeHexString(iv.getIV()));
             System.out.println("Key retornada do arquivo: " + Hex.encodeHexString(key.getEncoded()));
 
