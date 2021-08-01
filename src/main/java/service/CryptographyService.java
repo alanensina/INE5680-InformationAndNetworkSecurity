@@ -4,6 +4,9 @@ import model.LittlePackage;
 import model.User;
 import org.apache.commons.codec.DecoderException;
 import org.apache.commons.codec.binary.Hex;
+import org.bouncycastle.crypto.CryptoServicesRegistrar;
+import org.bouncycastle.crypto.fips.FipsDRBG;
+import org.bouncycastle.crypto.util.BasicEntropySourceProvider;
 import utils.AESwithCTR;
 import utils.PBKDF2UtilBCFIPS;
 import utils.Utils;
@@ -38,6 +41,8 @@ public class CryptographyService {
         this.random = new SecureRandom();
         this.pbkbf2 = new PBKDF2UtilBCFIPS();
         try {
+            // Adicionado para resolver problema da lentidao no Linux
+            CryptoServicesRegistrar.setSecureRandom(FipsDRBG.SHA512_HMAC.fromEntropySource(new BasicEntropySourceProvider(new SecureRandom(), true)).build(null, false));
             this.ks = KeyStore.getInstance("BCFKS", "BCFIPS");
             this.mac = Mac.getInstance("HMacSHA256", "BCFIPS");
             this.cipher = Cipher.getInstance("AES/CTR/NoPadding", "BCFIPS");
@@ -49,7 +54,7 @@ public class CryptographyService {
     // Método responsável por gerar o IV
     private IvParameterSpec generateIv() {
         IvParameterSpec iv = Utils.createCtrIvForAES(getIvCounter() + 1, random);
-        System.out.println("IV da mensagem: \t= " + Hex.encodeHexString(iv.getIV()));
+        System.out.println("IV da mensagem: " + Hex.encodeHexString(iv.getIV()));
 
         saveNewEntryToEncryptedFile(IV, Hex.encodeHexString(iv.getIV()));
 

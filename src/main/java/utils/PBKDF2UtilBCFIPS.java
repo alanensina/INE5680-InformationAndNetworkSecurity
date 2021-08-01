@@ -19,12 +19,7 @@ public class PBKDF2UtilBCFIPS {
         return instance;
     }
 
-    /**
-     * Gerar chave derivada da senha
-     *
-     * @param salt
-     * @return
-     */
+    // Gera chave derivada
     public static String generateDerivedKey(String password, String salt) {
         PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(), 5000, 128);
         SecretKeyFactory pbkdf2 = null;
@@ -39,10 +34,9 @@ public class PBKDF2UtilBCFIPS {
         return derivedPass;
     }
 
-    /* Usado para gerar o salt  */
+    // Usado para gerar a salt
     public String getSalt() throws NoSuchAlgorithmException {
         SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
-        //SecureRandom sr = new SecureRandom();
         byte[] salt = new byte[16];
         sr.nextBytes(salt);
         return Hex.encodeHexString(salt);
