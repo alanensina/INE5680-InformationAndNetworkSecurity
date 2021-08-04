@@ -1,5 +1,6 @@
 package app;
 
+import model.LittlePackage;
 import model.User;
 import org.bouncycastle.jcajce.provider.BouncyCastleFipsProvider;
 import service.CryptographyService;
@@ -59,17 +60,20 @@ public class Crypto {
     // Método responsável em iniciar o chat
     private void startChat(User user1, User user2) {
         String msg;
+        LittlePackage littlePackage;
 
         while (true) {
             System.out.println("Aguardando " + user1.getName() + " digitar a mensagem...");
             msg = scanner.nextLine();
             checkExitMessage(msg);
-            service.encryptMessageAndSendToDecryptor(user1, user2, msg);
+            littlePackage = service.encryptMessageAndSendToDecryptor(user1, user2, msg);
+            service.send(littlePackage);
 
             System.out.println("Aguardando " + user2.getName() + " digitar a mensagem...");
             msg = scanner.nextLine();
             checkExitMessage(msg);
-            service.encryptMessageAndSendToDecryptor(user2, user1, msg);
+            littlePackage = service.encryptMessageAndSendToDecryptor(user2, user1, msg);
+            service.send(littlePackage);
         }
     }
 
