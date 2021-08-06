@@ -19,22 +19,18 @@ public class PBKDF2UtilBCFIPS {
         return instance;
     }
 
-    // Gera chave derivada
     public static String generateDerivedKey(String password, String salt) {
         PBEKeySpec spec = new PBEKeySpec(password.toCharArray(), salt.getBytes(), 5000, 128);
         SecretKeyFactory pbkdf2 = null;
-        String derivedPass = null;
         try {
             pbkdf2 = SecretKeyFactory.getInstance("PBKDF2WithHmacSHA512", "BCFIPS");
             SecretKey sk = pbkdf2.generateSecret(spec);
-            derivedPass = Hex.encodeHexString(sk.getEncoded());
+            return Hex.encodeHexString(sk.getEncoded());
         } catch (Exception e) {
-            e.printStackTrace();
+            throw new RuntimeException("Error generating the derived key: " + e.getMessage());
         }
-        return derivedPass;
     }
 
-    // Usado para gerar a salt
     public String getSalt() throws NoSuchAlgorithmException {
         SecureRandom sr = SecureRandom.getInstance("SHA1PRNG");
         byte[] salt = new byte[16];

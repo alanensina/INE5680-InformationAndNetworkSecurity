@@ -1,20 +1,11 @@
 package utils;
 
-import javax.crypto.KeyGenerator;
-import javax.crypto.SecretKey;
 import javax.crypto.spec.IvParameterSpec;
-import java.security.NoSuchAlgorithmException;
-import java.security.NoSuchProviderException;
 import java.security.SecureRandom;
-import java.util.Scanner;
 
-/**
- * General utilities for the third chapter examples.
- */
 public class Utils {
 
     private static String digits = "0123456789abcdef";
-
 
     /**
      * Return length many bytes of the passed in byte array as a hex string.
@@ -37,36 +28,6 @@ public class Utils {
     }
 
     /**
-     * Return the passed in byte array as a hex string.
-     *
-     * @param data the bytes to be converted.
-     * @return a hex representation of data.
-     */
-    public static String toHex(byte[] data) {
-        return toHex(data, data.length);
-    }
-
-    /**
-     * Create a key for use with AES.
-     *
-     * @param bitLength
-     * @param random
-     * @return an AES key.
-     * @throws NoSuchAlgorithmException
-     * @throws NoSuchProviderException
-     */
-    public static SecretKey createKeyForAES(
-            int bitLength,
-            SecureRandom random)
-            throws NoSuchAlgorithmException, NoSuchProviderException {
-        KeyGenerator generator = KeyGenerator.getInstance("AES");
-
-        generator.init(128, random);
-
-        return generator.generateKey();
-    }
-
-    /**
      * Create an IV suitable for using with AES in CTR mode.
      * <p>
      * The IV will be composed of 4 bytes of message number,
@@ -82,18 +43,15 @@ public class Utils {
         byte[] ivBytes = new byte[16];
 
         // initially randomize
-
         random.nextBytes(ivBytes);
 
         // set the message number bytes
-
         ivBytes[0] = (byte) (messageNumber >> 24);
         ivBytes[1] = (byte) (messageNumber >> 16);
         ivBytes[2] = (byte) (messageNumber >> 8);
         ivBytes[3] = (byte) (messageNumber >> 0);
 
         // set the counter bytes to 1
-
         for (int i = 0; i != 7; i++) {
             ivBytes[8 + i] = 0;
         }
@@ -123,17 +81,6 @@ public class Utils {
     }
 
     /**
-     * Convert a byte array of 8 bit characters into a String.
-     *
-     * @param bytes the array containing the characters
-     * @return a String representation of bytes
-     */
-    public static String toString(
-            byte[] bytes) {
-        return toString(bytes, bytes.length);
-    }
-
-    /**
      * Convert the passed in String to a byte array by
      * taking the bottom 8 bits of each character it contains.
      *
@@ -150,14 +97,5 @@ public class Utils {
         }
 
         return bytes;
-    }
-
-    public static String getStringFromInput(String msg) {
-        if (msg != null) {
-            System.out.println(msg);
-        }
-
-        Scanner input = new Scanner(System.in);
-        return input.nextLine();
     }
 }
