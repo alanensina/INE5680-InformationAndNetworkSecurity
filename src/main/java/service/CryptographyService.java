@@ -119,7 +119,6 @@ public class CryptographyService {
             ks.load(null, null); // Cria arquivo vazio encriptado
             ks.store(new FileOutputStream(KEYSTORE_FILE), null); // Salva o arquivo encriptado na raiz do sistema
             saveNewEntryToEncryptedFile(MASTER_KEY, encryptedMasterKey); // Adiciona a masterkey como entrada no arquivo.
-            ks.store(new FileOutputStream(KEYSTORE_FILE), null);
             System.out.println("Senha mestra salva com sucesso!");
         } catch (IOException | NoSuchAlgorithmException | CertificateException | KeyStoreException e) {
             throw new RuntimeException("Erro ao salvar senha mestra em arquivo encriptado: " + e.getMessage());
